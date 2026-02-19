@@ -1,0 +1,55 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+
+local dataInitEvent = ReplicatedStorage.Shared.Remotes.DataInitEvent
+local SFXEvent = ReplicatedStorage.Shared.Bindables.SFXEvent
+local stopSFXEvent = ReplicatedStorage.Shared.Bindables.StopSFXEvent
+
+local bgSoundOrigin = ReplicatedStorage.Shared.Sounds.Background.BG
+
+local activeSounds = {}
+
+dataInitEvent.OnClientEvent:Connect(function()
+    Instance.new("Folder", script.Parent).Name = "SFX"
+    task.wait(3)
+    local bgSound = bgSoundOrigin:Clone()
+    bgSound.Parent = script.Parent.SFX
+    bgSound.Volume = 0
+    bgSound.Looped = true
+    bgSound:Play()
+
+    local tweenInfo = TweenInfo.new(5, Enum.EasingStyle.Quart, Enum.EasingDirection.InOut)
+    local tween = TweenService:Create(bgSound, tweenInfo, {Volume = 0.25})
+    tween:Play()
+end)
+
+SFXEvent.Event:Connect(function(sfxSound, volume, looped, soundTag)
+    if sfxSound then
+        local soundClone = sfxSound:Clone()
+        soundClone.Volume = volume or 0.5
+        soundClone.Looped = looped or false
+        soundClone.Parent = script.Parent.SFX
+
+        if soundTag then
+            if activeSounds[soundTag] then
+                activeSounds[soundTag]:Destroy()
+            end
+            activeSounds[soundTag] = soundClone
+        end
+        
+        soundClone:Play()
+        soundClone.Ended:Connect(function()
+            if soundTag and activeSounds[soundTag] == soundClone then
+                activeSounds[soundTag] = nil
+            end
+            soundClone:Destroy()
+        end)
+    end
+end)
+
+stopSFXEvent.Event:Connect(function(soundTag)
+    if activeSounds[soundTag] then
+        activeSounds[soundTag]:Destroy()
+        activeSounds[soundTag] = nil
+    end
+end)

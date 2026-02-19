@@ -1,0 +1,72 @@
+debug.setmemorycategory("UpgradesHandler")
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerStorage = game:GetService("ServerStorage")
+
+local upgradeFormulas = ReplicatedStorage.Shared.Modules.UpgradeFormulas  
+local upgradeEvent = ReplicatedStorage.Shared.Remotes.UpgradeEvent
+local upgradeConfig = require(ReplicatedStorage.Shared.Modules.UpgradeConfig)
+local dataManager = require(ServerStorage.Server.Modules.DataManager)
+local gammaNum = require(ReplicatedStorage.Shared.Modules.GammaNum)
+
+local function ensureGammaNum(value)
+    if typeof(value) == "buffer" then return value end
+    if typeof(value) == "number" then return gammaNum.fromNumber(value) end
+    if typeof(value) == "table" and value.toSuffix then return value end
+    return gammaNum.fromNumber(0)
+end
+
+local function getUpgradeCost(config, tier, costReductionlevel)
+    if config.CostFormula then
+        local formulaModule = upgradeFormulas:FindFirstChild(config.CostFormula)
+        if formulaModule then
+            return require(formulaModule)(tier)
+        end
+    end
+    return gammaNum.fromNumber(0)
+end
+
+upgradeEvent.OnServerEvent:Connect(function(player, upgradeKey)
+    local config = upgradeConfig[upgradeKey]
+    if not config then return end
+    
+    local currentStatValue
+    if config.StatType == "Level" then
+        currentStatValue = dataManager:RetrieveAmount(player, config.RelatedStat)
+    elseif config.StatType == "Upgrade" then
+        currentStatValue = dataManager:GetUpgrade(player, upgradeKey)
+    end
+    
+    local currentLevel = typeof(currentStatValue) == "number" and currentStatValue or 0
+    
+    if config.Type == "Finite" and currentLevel >= config.MaxLevel then
+        warn(player.Name .. " reached max level for " .. upgradeKey)
+        return
+    end
+    
+    local cost = getUpgradeCost(config, currentLevel)   
+    if upgradeKey == "Level" then
+        local levelCostReduction = dataManager:GetUpgrade(player, "ReduceLevelCost")
+        local finalCostReduction = gammaNum.div(gammaNum.sub(gammaNum.fromNumber(100), gammaNum.fromNumber(levelCostReduction)), gammaNum.fromNumber(100))
+        cost = gammaNum.mul(cost, finalCostReduction)
+    end
+    local playerClicks = ensureGammaNum(dataManager:RetrieveAmount(player, "Clicks")) 
+
+    if gammaNum.gte(playerClicks, cost) then 
+        if config.StatType == "Level" then
+            dataManager:DeductCurrency(player, "Clicks", cost)
+            dataManager:AddCurrency(player, config.RelatedStat, 1)
+        elseif config.StatType == "Upgrade" then
+            print(currentLevel)
+            dataManager:DeductCurrency(player, "Clicks", cost)
+            dataManager:SetUpgrade(player, upgradeKey, currentLevel + 1)
+        end
+
+        if config.OnUpgrade then
+            config.OnUpgrade(player, currentLevel + 1) 
+        end
+    else
+        
+        print(`[UpgradesHandler] Player {player.Name} cannot afford {upgradeKey}`)
+    end
+end)

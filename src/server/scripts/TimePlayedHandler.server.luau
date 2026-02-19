@@ -1,0 +1,35 @@
+debug.setmemorycategory("TimePlayedHandler")
+
+local PlayersService = game:GetService("Players")
+local ServerStorage = game:GetService("ServerStorage")
+local dataManager = require(ServerStorage.Server.Modules.DataManager)
+
+local bindableEventsFolder = ServerStorage.Server.BindableEvents
+local dataInitBindable = bindableEventsFolder.DataInitBindable
+local joinTimestamps = {}
+
+PlayersService.PlayerAdded:Connect(function(player)
+    joinTimestamps[player.UserId] = os.time()
+end)
+
+dataInitBindable.Event:Connect(function(player)
+    local profile = dataManager.Profiles[player]
+    if not profile then return end
+
+    local joinTime = joinTimestamps[player.UserId] or os.time()
+
+    local startingTime = dataManager:GetStatistic(player, "TotalTime") or 0
+
+    task.spawn(function()
+        while player.Parent and dataManager.Profiles[player] do
+            local sessionDuration = os.time() - joinTime 
+            local newTime = startingTime + sessionDuration
+            dataManager:SetStatistic(player, "TotalTime", newTime)
+            task.wait(5)
+        end
+    end)
+end)
+
+PlayersService.PlayerRemoving:Connect(function(player)
+    joinTimestamps[player.UserId] = nil
+end)
