@@ -1,4 +1,4 @@
-debug.setmemorycategory("DataHandler")
+debug.setmemorycategory("Data")
 
 -- Services
 local PlayersService = game:GetService("Players")

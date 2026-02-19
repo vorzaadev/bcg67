@@ -1,4 +1,4 @@
-debug.setmemorycategory("AutoclickHandler")
+debug.setmemorycategory("Click")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local PlayersService = game:GetService("Players")

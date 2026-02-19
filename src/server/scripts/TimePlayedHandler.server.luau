@@ -1,4 +1,4 @@
-debug.setmemorycategory("TimePlayedHandler")
+debug.setmemorycategory("Stats")
 
 local PlayersService = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")

@@ -1,4 +1,4 @@
-debug.setmemorycategory("ClickCalculationHandler")
+debug.setmemorycategory("Click")
 
 local ServerStorage = game:GetService("ServerStorage")
 local PlayersService = game:GetService("Players")
